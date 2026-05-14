@@ -1,24 +1,23 @@
 <!DOCTYPE html>
 
-<html lang="en" data-content_root="./">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>News Application documentation &#8212; News Application  documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
-    <script src="_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <title>News Application Documentation &#8212; News Application  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=6625fa76" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
-
   
-  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
   </head><body>
   
@@ -31,12 +30,126 @@
           <div class="body" role="main">
             
   <section id="news-application-documentation">
-<h1>News Application documentation<a class="headerlink" href="#news-application-documentation" title="Link to this heading">¶</a></h1>
-<p>Add your content using <code class="docutils literal notranslate"><span class="pre">reStructuredText</span></code> syntax. See the
-<a class="reference external" href="https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html">reStructuredText</a>
-documentation for details.</p>
+<h1>News Application Documentation<a class="headerlink" href="#news-application-documentation" title="Permalink to this heading">¶</a></h1>
+<p>A Django-based news application with role-based access control, subscription
+management, article approval workflow, and RESTful API.</p>
 <div class="toctree-wrapper compound">
 </div>
+<section id="models">
+<h2>Models<a class="headerlink" href="#models" title="Permalink to this heading">¶</a></h2>
+<section id="user">
+<h3>User<a class="headerlink" href="#user" title="Permalink to this heading">¶</a></h3>
+<p>Custom user model extending Django’s AbstractUser. Each user has a role
+(reader, journalist, or editor) which determines their permissions.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">subscribed_publishers</span></code>: ManyToManyField to Publisher</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">subscribed_journalists</span></code>: ManyToManyField to User (self-referential)</p></li>
+</ul>
+</section>
+<section id="publisher">
+<h3>Publisher<a class="headerlink" href="#publisher" title="Permalink to this heading">¶</a></h3>
+<p>Represents a news publisher with associated editors and journalists.</p>
+</section>
+<section id="article">
+<h3>Article<a class="headerlink" href="#article" title="Permalink to this heading">¶</a></h3>
+<p>News articles written by journalists. Must be approved by an editor before
+becoming visible to readers.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">title</span></code>: CharField (max 255)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">content</span></code>: TextField</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">author</span></code>: ForeignKey to User (journalists only)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">publisher</span></code>: ForeignKey to Publisher</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">approved</span></code>: BooleanField (default False)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">created_at</span></code>: DateTimeField (auto_now_add)</p></li>
+</ul>
+</section>
+<section id="newsletter">
+<h3>Newsletter<a class="headerlink" href="#newsletter" title="Permalink to this heading">¶</a></h3>
+<p>Curated collections of articles created by journalists or editors.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">title</span></code>: CharField (max 255)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">description</span></code>: TextField</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">author</span></code>: ForeignKey to User</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">articles</span></code>: ManyToManyField to Article</p></li>
+</ul>
+</section>
+</section>
+<section id="views">
+<h2>Views<a class="headerlink" href="#views" title="Permalink to this heading">¶</a></h2>
+<section id="authentication">
+<h3>Authentication<a class="headerlink" href="#authentication" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">register</span></code>: User registration with role selection and automatic group assignment</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">user_login</span></code>: Login form using Django’s AuthenticationForm</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">user_logout</span></code>: Session logout</p></li>
+</ul>
+</section>
+<section id="reader">
+<h3>Reader<a class="headerlink" href="#reader" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">reader_dashboard</span></code>: View articles and manage subscriptions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">subscribe_publisher</span></code> / <code class="docutils literal notranslate"><span class="pre">unsubscribe_publisher</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">subscribe_journalist</span></code> / <code class="docutils literal notranslate"><span class="pre">unsubscribe_journalist</span></code></p></li>
+</ul>
+</section>
+<section id="journalist">
+<h3>Journalist<a class="headerlink" href="#journalist" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">journalist_dashboard</span></code>: View own articles and newsletters</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">article_create</span></code>, <code class="docutils literal notranslate"><span class="pre">article_edit</span></code>, <code class="docutils literal notranslate"><span class="pre">article_delete</span></code></p></li>
+</ul>
+</section>
+<section id="editor">
+<h3>Editor<a class="headerlink" href="#editor" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">editor_dashboard</span></code>: Review pending articles, view approved articles</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">approve_article</span></code>: Approve and notify subscribers</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reject_article</span></code>: Delete unapproved articles</p></li>
+</ul>
+</section>
+<section id="newsletters">
+<h3>Newsletters<a class="headerlink" href="#newsletters" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">newsletter_create</span></code>, <code class="docutils literal notranslate"><span class="pre">newsletter_edit</span></code>, <code class="docutils literal notranslate"><span class="pre">newsletter_delete</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="api-endpoints">
+<h2>API Endpoints<a class="headerlink" href="#api-endpoints" title="Permalink to this heading">¶</a></h2>
+<p>All endpoints require authentication (session-based).</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/articles/</span></code>: List all approved articles</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/articles/subscribed/</span></code>: Reader’s subscribed articles</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/articles/&lt;id&gt;/</span></code>: Retrieve a single approved article</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/articles/</span></code>: Create article (journalists only)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/api/articles/&lt;id&gt;/</span></code>: Update article (journalists own, editors)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/api/articles/&lt;id&gt;/</span></code>: Delete article (journalists own, editors)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/approved/</span></code>: Log approved article data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/newsletters/</span></code>: List all newsletters</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/newsletters/</span></code>: Create newsletter (journalists, editors)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/api/newsletters/&lt;id&gt;/</span></code>: Update newsletter</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/api/newsletters/&lt;id&gt;/</span></code>: Delete newsletter</p></li>
+</ul>
+</section>
+<section id="signals">
+<h2>Signals<a class="headerlink" href="#signals" title="Permalink to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">notify_on_approval</span></code>: post_save signal on Article that triggers email
+notifications to subscribers and posts to the internal /api/approved/ endpoint
+when an article is approved.</p></li>
+</ul>
+</section>
+<section id="tests">
+<h2>Tests<a class="headerlink" href="#tests" title="Permalink to this heading">¶</a></h2>
+<p>35 automated tests covering:
+- User registration with roles and duplicate email validation
+- API access control per role (reader, journalist, editor)
+- Article CRUD operations via API
+- Newsletter CRUD operations via API
+- Article approval and rejection flows
+- Email and API posting via signals (mocked)
+- Reader subscription management</p>
+</section>
 </section>
 
 
@@ -44,7 +157,7 @@ documentation for details.</p>
           
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
 <h1 class="logo"><a href="#">News Application</a></h1>
 
@@ -64,7 +177,7 @@ documentation for details.</p>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
+<div id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -72,7 +185,7 @@ documentation for details.</p>
       <input type="submit" value="Go" />
     </form>
     </div>
-</search>
+</div>
 <script>document.getElementById('searchbox').style.display = "block"</script>
 
 
@@ -87,11 +200,11 @@ documentation for details.</p>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &#169;2026, Linda Khumalo.
+      &copy;2026, Linda Khumalo.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
-      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
       <a href="_sources/index.rst.txt"
