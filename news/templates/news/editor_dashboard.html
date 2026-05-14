@@ -1,0 +1,59 @@
+{% extends "news/base.html" %}
+{% block title %}Editor Dashboard{% endblock %}
+{% block content %}
+<h2>Editor Dashboard</h2>
+<a href="{% url 'newsletter_create' %}" class="btn btn-secondary mb-3">Create Newsletter</a>
+
+<h4>Pending Articles</h4>
+{% for article in pending %}
+  <div class="card mb-3 border-warning">
+    <div class="card-body">
+      <h5 class="card-title">{{ article.title }}</h5>
+      <p class="card-text">{{ article.content|truncatewords:50 }}</p>
+      <p class="text-muted">
+        Author: {{ article.author.username }} |
+        Publisher: {{ article.publisher.name }} |
+        {{ article.created_at|date:"M d, Y" }}
+      </p>
+      <a href="{% url 'approve_article' article.id %}" class="btn btn-sm btn-success">Approve</a>
+      <a href="{% url 'reject_article' article.id %}" class="btn btn-sm btn-danger">Reject</a>
+      <a href="{% url 'article_edit' article.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+    </div>
+  </div>
+{% empty %}
+  <p>No articles pending review.</p>
+{% endfor %}
+
+<h4 class="mt-4">Approved Articles</h4>
+{% for article in approved %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">{{ article.title }}</h5>
+      <p class="card-text">{{ article.content|truncatewords:50 }}</p>
+      <p class="text-muted">
+        Author: {{ article.author.username }} |
+        Publisher: {{ article.publisher.name }} |
+        {{ article.created_at|date:"M d, Y" }}
+      </p>
+      <a href="{% url 'article_delete' article.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+    </div>
+  </div>
+{% empty %}
+  <p>No approved articles.</p>
+{% endfor %}
+
+<h4 class="mt-4">Newsletters</h4>
+{% for newsletter in newsletters %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">{{ newsletter.title }}</h5>
+      <p class="card-text">{{ newsletter.description|truncatewords:30 }}</p>
+      <p class="text-muted">By {{ newsletter.author.username }} | {{ newsletter.created_at|date:"M d, Y" }}</p>
+      <a href="{% url 'newsletter_edit' newsletter.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+      <a href="{% url 'newsletter_delete' newsletter.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+    </div>
+  </div>
+{% empty %}
+  <p>No newsletters yet.</p>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "news/base.html" %}
+{% block title %}{% if form.instance.pk %}Edit Article{% else %}New Article{% endif %}{% endblock %}
+{% block content %}
+<h2>{% if form.instance.pk %}Edit Article{% else %}New Article{% endif %}</h2>
+<form method="post">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
+    {{ form.title }}
+  </div>
+  <div class="mb-3">
+    <label for="{{ form.content.id_for_label }}" class="form-label">Content</label>
+    {{ form.content }}
+  </div>
+  <div class="mb-3">
+    <label for="{{ form.publisher.id_for_label }}" class="form-label">Publisher</label>
+    {{ form.publisher }}
+  </div>
+  <button type="submit" class="btn btn-primary">Save</button>
+  <a href="{% url 'journalist_dashboard' %}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

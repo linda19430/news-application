@@ -1,0 +1,41 @@
+{% extends "news/base.html" %}
+{% block title %}Journalist Dashboard{% endblock %}
+{% block content %}
+<h2>Journalist Dashboard</h2>
+<a href="{% url 'article_create' %}" class="btn btn-primary mb-3">New Article</a>
+<a href="{% url 'newsletter_create' %}" class="btn btn-secondary mb-3">New Newsletter</a>
+
+<h4>My Articles</h4>
+{% for article in articles %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">{{ article.title }}</h5>
+      <p class="card-text">{{ article.content|truncatewords:50 }}</p>
+      <p class="text-muted">
+        Publisher: {{ article.publisher.name }} |
+        Status: {% if article.approved %}<span class="text-success">Approved</span>{% else %}<span class="text-warning">Pending</span>{% endif %} |
+        {{ article.created_at|date:"M d, Y" }}
+      </p>
+      <a href="{% url 'article_edit' article.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+      <a href="{% url 'article_delete' article.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+    </div>
+  </div>
+{% empty %}
+  <p>You have not written any articles yet.</p>
+{% endfor %}
+
+<h4 class="mt-4">My Newsletters</h4>
+{% for newsletter in newsletters %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">{{ newsletter.title }}</h5>
+      <p class="card-text">{{ newsletter.description|truncatewords:30 }}</p>
+      <p class="text-muted">{{ newsletter.created_at|date:"M d, Y" }}</p>
+      <a href="{% url 'newsletter_edit' newsletter.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+      <a href="{% url 'newsletter_delete' newsletter.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+    </div>
+  </div>
+{% empty %}
+  <p>You have not created any newsletters yet.</p>
+{% endfor %}
+{% endblock %}

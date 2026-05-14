@@ -1,0 +1,77 @@
+{% extends "news/base.html" %}
+{% block title %}Reader Dashboard{% endblock %}
+{% block content %}
+<h2>Reader Dashboard</h2>
+
+<h4 class="mt-4">Your Subscriptions</h4>
+<div class="row mt-3">
+  <div class="col-md-6">
+    <h5>Publishers</h5>
+    <ul class="list-group mb-3">
+      {% for pub in publishers %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          {{ pub.name }}
+          {% if pub in user.subscribed_publishers.all %}
+            <a href="{% url 'unsubscribe_publisher' pub.id %}" class="btn btn-sm btn-outline-danger">Unsubscribe</a>
+          {% else %}
+            <a href="{% url 'subscribe_publisher' pub.id %}" class="btn btn-sm btn-outline-primary">Subscribe</a>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="list-group-item">No publishers available.</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="col-md-6">
+    <h5>Journalists</h5>
+    <ul class="list-group mb-3">
+      {% for journo in journalists %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          {{ journo.username }}
+          {% if journo in user.subscribed_journalists.all %}
+            <a href="{% url 'unsubscribe_journalist' journo.id %}" class="btn btn-sm btn-outline-danger">Unsubscribe</a>
+          {% else %}
+            <a href="{% url 'subscribe_journalist' journo.id %}" class="btn btn-sm btn-outline-primary">Subscribe</a>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="list-group-item">No journalists available.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<h4 class="mt-4">Subscribed Articles</h4>
+<div class="row">
+  {% for article in subscribed_articles %}
+    <div class="col-md-6 mb-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">{{ article.title }}</h5>
+          <p class="card-text">{{ article.content|truncatewords:30 }}</p>
+          <p class="text-muted"><small>By {{ article.author.username }} | {{ article.publisher.name }} | {{ article.created_at|date:"M d, Y" }}</small></p>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <p>No subscribed articles yet. Subscribe to publishers or journalists above.</p>
+  {% endfor %}
+</div>
+
+<h4 class="mt-4">All Approved Articles</h4>
+<div class="row">
+  {% for article in articles %}
+    <div class="col-md-6 mb-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <h5 class="card-title">{{ article.title }}</h5>
+          <p class="card-text">{{ article.content|truncatewords:30 }}</p>
+          <p class="text-muted"><small>{{ article.publisher.name }} | {{ article.created_at|date:"M d, Y" }}</small></p>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <p>No articles published yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

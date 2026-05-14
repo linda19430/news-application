@@ -1,0 +1,45 @@
+{% extends 'news/base.html' %}
+{% block title %}Home - News Application{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-lg-8">
+        <h1 class="h3 mb-3">Latest Approved Articles</h1>
+
+        {% if articles %}
+            {% for a in articles %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ a.title }}</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            {{ a.publisher.name }} - by {{ a.author.username }} - {{ a.created_at|date:'Y-m-d H:i' }}
+                        </h6>
+                        <p class="card-text">{{ a.content|truncatewords:50 }}</p>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">No approved articles yet.</div>
+        {% endif %}
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Quick Links</h5>
+                <ul class="list-unstyled mb-0">
+                    {% if user.is_authenticated %}
+                        {% if user.role == 'reader' %}
+                            <li><a href="{% url 'reader_dashboard' %}">Reader Dashboard</a></li>
+                        {% elif user.role == 'journalist' %}
+                            <li><a href="{% url 'journalist_dashboard' %}">Journalist Dashboard</a></li>
+                        {% elif user.role == 'editor' %}
+                            <li><a href="{% url 'editor_dashboard' %}">Editor Dashboard</a></li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
