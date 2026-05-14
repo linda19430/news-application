@@ -1,20 +1,42 @@
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
 
 # Virtual environments
 venv/
-.env/
+virtualenv/
+env/
+.env
+.venv/
 
 # Django
 db.sqlite3
 *.log
 staticfiles/
+media/
+
+# Sphinx docs build
+docs/build/
 
 # OS
 .DS_Store
+Thumbs.db
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
+# Docker
+.dockerignore
+
+# Secrets
+*.env
+*.secret

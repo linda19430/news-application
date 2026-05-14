@@ -1,27 +1,8 @@
-"""
-Database models for the News application.
-
-This module defines the core data structures used by the system,
-including a custom user model with role-based behavior, publishers,
-and articles that require editorial approval before publication.
-"""
-
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
 class User(AbstractUser):
-    """
-    Custom user model extending Django's AbstractUser.
-
-    Each user is assigned a role (reader, journalist, or editor),
-    which determines their permissions and behavior within the system.
-
-    Readers can subscribe to publishers and journalists.
-    Journalists can publish articles.
-    Editors can review and approve articles.
-    """
-
     ROLE_CHOICES = (
         ("reader", "Reader"),
         ("journalist", "Journalist"),
@@ -46,29 +27,25 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         super().save(*args, **kwargs)
-
-        # Enforce role constraints AFTER save
-        if not is_new and self.role == "journalist":
+        if not is_new and self.role != "reader":
             self.subscribed_publishers.clear()
             self.subscribed_journalists.clear()
 
+    def __str__(self):
+        return f"{self.username} ({self.role})"
+
 
 class Publisher(models.Model):
-    """
-    Represents a news publisher.
-
-    A publisher may have multiple editors and journalists associated
-    with it and can have many subscribed readers.
-    """
-
     name = models.CharField(max_length=255)
     editors = models.ManyToManyField(
         User,
+        blank=True,
         related_name="editor_publishers",
         limit_choices_to={"role": "editor"},
     )
     journalists = models.ManyToManyField(
         User,
+        blank=True,
         related_name="journalist_publishers",
         limit_choices_to={"role": "journalist"},
     )
@@ -78,16 +55,9 @@ class Publisher(models.Model):
 
 
 class Article(models.Model):
-    """
-    Represents a news article written by a journalist.
-
-    Articles must be approved by an editor before they are considered
-    published and visible to subscribed readers.
-    """
-
     title = models.CharField(max_length=255)
     content = models.TextField()
-    journalist = models.ForeignKey(
+    author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="articles",
@@ -96,10 +66,32 @@ class Article(models.Model):
     publisher = models.ForeignKey(
         Publisher,
         on_delete=models.CASCADE,
+        related_name="articles",
     )
     approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ["-created_at"]
+
     def __str__(self):
         return self.title
 
+
+class Newsletter(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="newsletters",
+        limit_choices_to={"role__in": ["journalist", "editor"]},
+    )
+    articles = models.ManyToManyField(Article, blank=True, related_name="newsletters")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title

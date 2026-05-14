@@ -1,70 +1,55 @@
-"""
-Signal handlers for the News application.
-
-This module contains Django signal logic that triggers notifications
-when specific events occur, such as an article being approved.
-"""
-
+import requests
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.mail import send_mail
-import requests
 
 from .models import Article
 
 
 @receiver(post_save, sender=Article)
 def notify_on_approval(sender, instance, created, **kwargs):
-    """
-    Send notifications when an article is approved.
-
-    This function is triggered after an Article is saved. When an
-    article transitions from unapproved to approved, email
-    notifications are sent to subscribed readers and the article
-    title is posted to X (Twitter).
-    """
-
-    # Do nothing when the article is first created
-    if created:
+    if created or not instance.approved:
         return
 
-    # Do nothing if the article is not approved
-    if not instance.approved:
-        return
+    _email_subscribers(instance)
+    _post_to_internal_api(instance)
 
-    # Collect subscriber emails safely
-    subscribers = set()
 
-    # Subscribers to the publisher
-    for user in instance.publisher.subscribers.all():
+def _email_subscribers(article):
+    recipients = set()
+    for user in article.publisher.subscribers.filter(role="reader"):
         if user.email:
-            subscribers.add(user.email)
-
-    # Subscribers to the journalist
-    for user in instance.journalist.followers.all():
+            recipients.add(user.email)
+    for user in article.author.followers.filter(role="reader"):
         if user.email:
-            subscribers.add(user.email)
+            recipients.add(user.email)
 
-    # Send email notifications
-    if subscribers:
-        print("Sending email notifications to:", subscribers)
-        send_mail(
-            subject=f"New Article Approved: {instance.title}",
-            message=instance.content,
-            from_email="news@app.com",
-            recipient_list=list(subscribers),
-            fail_silently=False,
-        )
+    if recipients:
+        try:
+            send_mail(
+                subject=f"New Article: {article.title}",
+                message=f"{article.title}\n\n{article.content[:500]}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=list(recipients),
+                fail_silently=True,
+            )
+        except Exception:
+            pass
 
-    # Simulated X (Twitter) API call
+
+def _post_to_internal_api(article):
+    base_url = getattr(settings, "SITE_BASE_URL", "http://localhost:8000")
     try:
-        print("Posting article to X:", instance.title)
         requests.post(
-            "https://api.twitter.com/2/tweets",
-            headers={"Authorization": "Bearer YOUR_TOKEN"},
-            json={"text": instance.title},
+            f"{base_url}/api/approved/",
+            json={
+                "id": article.id,
+                "title": article.title,
+                "publisher": article.publisher_id,
+                "author": article.author_id,
+            },
             timeout=5,
         )
-    except Exception as e:
-        print(" post failed:", e)
-
+    except Exception:
+        pass
