@@ -15,50 +15,103 @@ A Django-based news application that allows readers to view and subscribe to art
 ## Prerequisites
 
 - Python 3.8+
+- MariaDB 10.3+ (or MySQL 5.7+)
 - Docker and Docker Compose (for containerized deployment)
 
-## Quick Start — Virtual Environment
+## Database Setup — MariaDB
+
+This project uses MariaDB as the primary database. SQLite is available as a secondary option for local development.
+
+### Install MariaDB
 
 ```bash
+# Ubuntu/Debian
+sudo apt install mariadb-server libmariadb-dev
+
+# macOS
+brew install mariadb
+
+# Start the service
+sudo systemctl start mariadb   # Linux
+brew services start mariadb    # macOS
+```
+
+### Create the database and user
+
+```bash
+sudo mysql -u root
+```
+
+```sql
+CREATE DATABASE news_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'news_user'@'localhost' IDENTIFIED BY 'your-password';
+GRANT ALL PRIVILEGES ON news_db.* TO 'news_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+## Quick Start
+
+### 1. Clone and set up environment
+
+```bash
+git clone https://github.com/linda19430/news-application.git
+cd news-application
+
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
+
+### 2. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set your values:
+
+- `SECRET_KEY` — generate one with: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
+- `DB_PASSWORD` — the password you set for the MariaDB user
+- Leave `DB=mysql` for MariaDB, or remove it to use SQLite
+
+### 3. Run migrations and start the server
+
+```bash
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Access at http://localhost:8000
+Access the application at http://localhost:8000
 
-## Quick Start — Docker
+## Using SQLite (secondary option)
 
-```bash
-docker build -t news-app .
-docker run -p 8000:8000 news-app
-```
-
-Or with Docker Compose:
-
-```bash
-docker-compose up -d
-docker-compose exec web python manage.py migrate
-docker-compose exec web python manage.py createsuperuser
-```
+To use SQLite instead of MariaDB, comment out or remove the `DB=mysql` line in your `.env` file. The application will automatically fall back to SQLite with no additional setup required.
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DEBUG` | Enable debug mode | `True` |
-| `SECRET_KEY` | Django secret key | (change in production) |
-| `DB` | Use `mysql` for MySQL/MariaDB | `sqlite` |
+| `SECRET_KEY` | Django secret key | (required — generate one) |
+| `DB` | Set to `mysql` for MariaDB/MySQL | (unset = SQLite) |
 | `DB_NAME` | Database name | `news_db` |
 | `DB_USER` | Database user | `news_user` |
-| `DB_PASSWORD` | Database password | (required for MySQL) |
+| `DB_PASSWORD` | Database password | (required when DB=mysql) |
 | `DB_HOST` | Database host | `localhost` |
 | `DB_PORT` | Database port | `3306` |
 | `ALLOWED_HOSTS` | Comma-separated hosts | `localhost,127.0.0.1` |
+| `EMAIL_BACKEND` | Email backend class | `console` |
+| `DEFAULT_FROM_EMAIL` | Sender email address | `news@app.com` |
 | `SITE_BASE_URL` | Base URL for internal API calls | `http://localhost:8000` |
+
+## Quick Start — Docker
+
+```bash
+docker build -t news-app .
+docker run -p 8000:8000 --env-file .env news-app
+```
 
 ## User Roles
 
