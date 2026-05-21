@@ -7,11 +7,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-change-me-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 
-DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -56,15 +56,15 @@ WSGI_APPLICATION = "news_project.wsgi.application"
 
 AUTH_USER_MODEL = "news.User"
 
-if os.environ.get("DB", "") == "mysql":
+if os.getenv("DB", "") == "mysql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
-            "NAME": os.environ.get("DB_NAME", "news_db"),
-            "USER": os.environ.get("DB_USER", "news_user"),
-            "PASSWORD": os.environ.get("DB_PASSWORD", ""),
-            "HOST": os.environ.get("DB_HOST", "localhost"),
-            "PORT": os.environ.get("DB_PORT", "3306"),
+            "NAME": os.getenv("DB_NAME", "news_db"),
+            "USER": os.getenv("DB_USER", "news_user"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "3306"),
         }
     }
 else:
@@ -75,12 +75,12 @@ else:
         }
     }
 
-EMAIL_BACKEND = os.environ.get(
+EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
 )
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "news@app.com")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "news@app.com")
 
-SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://localhost:8000")
+SITE_BASE_URL = os.getenv("SITE_BASE_URL", "http://localhost:8000")
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -104,6 +104,20 @@ LOGOUT_REDIRECT_URL = "home"
 
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_AGE = 86400
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

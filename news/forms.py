@@ -1,10 +1,12 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
 from .models import Article, Newsletter, User
 
 
 class UserRegisterForm(UserCreationForm):
+    """Registration form with role selection and duplicate email validation."""
+
     role = forms.ChoiceField(choices=User.ROLE_CHOICES)
 
     class Meta:
@@ -19,16 +21,21 @@ class UserRegisterForm(UserCreationForm):
 
 
 class UserLoginForm(AuthenticationForm):
+    """Login form using Django's built-in AuthenticationForm."""
     pass
 
 
 class ArticleForm(forms.ModelForm):
+    """Form for creating and editing articles."""
+
     class Meta:
         model = Article
         fields = ["title", "content", "publisher"]
 
 
 class NewsletterForm(forms.ModelForm):
+    """Form for creating and editing newsletters."""
+
     class Meta:
         model = Newsletter
         fields = ["title", "description", "articles"]

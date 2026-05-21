@@ -3,6 +3,8 @@ from django.db import models
 
 
 class User(AbstractUser):
+    """Custom user model with role-based access and subscription support."""
+
     ROLE_CHOICES = (
         ("reader", "Reader"),
         ("journalist", "Journalist"),
@@ -25,17 +27,24 @@ class User(AbstractUser):
     )
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
+        """Save user, clearing subscriptions if role changed away from reader."""
+        if self.pk is not None:
+            try:
+                orig = User.objects.get(pk=self.pk)
+                if orig.role == "reader" and self.role != "reader":
+                    self.subscribed_publishers.clear()
+                    self.subscribed_journalists.clear()
+            except User.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
-        if not is_new and self.role != "reader":
-            self.subscribed_publishers.clear()
-            self.subscribed_journalists.clear()
 
     def __str__(self):
         return f"{self.username} ({self.role})"
 
 
 class Publisher(models.Model):
+    """A news publisher with associated editors and journalists."""
+
     name = models.CharField(max_length=255)
     editors = models.ManyToManyField(
         User,
@@ -55,6 +64,8 @@ class Publisher(models.Model):
 
 
 class Article(models.Model):
+    """News article written by a journalist; requires editor approval."""
+
     title = models.CharField(max_length=255)
     content = models.TextField()
     author = models.ForeignKey(
@@ -79,6 +90,8 @@ class Article(models.Model):
 
 
 class Newsletter(models.Model):
+    """Curated collection of articles created by journalists or editors."""
+
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     author = models.ForeignKey(

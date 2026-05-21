@@ -4,18 +4,24 @@ from .models import Article, Newsletter, Publisher, User
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Serializer for the custom User model."""
+
     class Meta:
         model = User
         fields = ["id", "username", "email", "role"]
 
 
 class PublisherSerializer(serializers.ModelSerializer):
+    """Serializer for Publisher model."""
+
     class Meta:
         model = Publisher
         fields = ["id", "name"]
 
 
 class ArticleSerializer(serializers.ModelSerializer):
+    """Serializer for Article with read-only author and publisher names."""
+
     author_username = serializers.ReadOnlyField(source="author.username")
     publisher_name = serializers.ReadOnlyField(source="publisher.name")
 
@@ -36,6 +42,8 @@ class ArticleSerializer(serializers.ModelSerializer):
 
 
 class NewsletterSerializer(serializers.ModelSerializer):
+    """Serializer for Newsletter with read-only author username."""
+
     author_username = serializers.ReadOnlyField(source="author.username")
 
     class Meta:

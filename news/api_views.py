@@ -9,10 +9,16 @@ from .serializers import ArticleSerializer, NewsletterSerializer
 
 
 class ArticleListAPIView(APIView):
+    """List all approved articles or create a new one (journalists only)."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        articles = Article.objects.filter(approved=True).order_by("-created_at")
+        articles = (
+            Article.objects.filter(approved=True)
+            .select_related("author", "publisher")
+            .order_by("-created_at")
+        )
         serializer = ArticleSerializer(articles, many=True)
         return Response(serializer.data)
 
@@ -30,10 +36,16 @@ class ArticleListAPIView(APIView):
 
 
 class ArticleDetailAPIView(APIView):
+    """Retrieve, update, or delete a single article."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, article_id):
-        article = get_object_or_404(Article, id=article_id, approved=True)
+        article = get_object_or_404(
+            Article.objects.select_related("author", "publisher"),
+            id=article_id,
+            approved=True,
+        )
         serializer = ArticleSerializer(article)
         return Response(serializer.data)
 
@@ -72,6 +84,8 @@ class ArticleDetailAPIView(APIView):
 
 
 class SubscribedArticlesAPIView(APIView):
+    """List articles from publishers and journalists the reader subscribes to."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -87,12 +101,14 @@ class SubscribedArticlesAPIView(APIView):
                 approved=True,
                 author__in=user.subscribed_journalists.all(),
             )
-        ).distinct().order_by("-created_at")
+        ).distinct().select_related("author", "publisher").order_by("-created_at")
         serializer = ArticleSerializer(articles, many=True)
         return Response(serializer.data)
 
 
 class ApprovedArticleLogAPIView(APIView):
+    """Internal endpoint for logging approved article data."""
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -103,10 +119,17 @@ class ApprovedArticleLogAPIView(APIView):
 
 
 class NewsletterListAPIView(APIView):
+    """List all newsletters or create a new one (journalists and editors)."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        newsletters = Newsletter.objects.all().order_by("-created_at")
+        newsletters = (
+            Newsletter.objects.all()
+            .select_related("author")
+            .prefetch_related("articles")
+            .order_by("-created_at")
+        )
         serializer = NewsletterSerializer(newsletters, many=True)
         return Response(serializer.data)
 
@@ -124,10 +147,15 @@ class NewsletterListAPIView(APIView):
 
 
 class NewsletterDetailAPIView(APIView):
+    """Retrieve, update, or delete a single newsletter."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, newsletter_id):
-        newsletter = get_object_or_404(Newsletter, id=newsletter_id)
+        newsletter = get_object_or_404(
+            Newsletter.objects.select_related("author").prefetch_related("articles"),
+            id=newsletter_id,
+        )
         serializer = NewsletterSerializer(newsletter)
         return Response(serializer.data)
 
@@ -138,7 +166,9 @@ class NewsletterDetailAPIView(APIView):
                 {"error": "Access denied."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        serializer = NewsletterSerializer(newsletter, data=request.data, partial=True)
+        serializer = NewsletterSerializer(
+            newsletter, data=request.data, partial=True
+        )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)

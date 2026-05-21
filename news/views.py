@@ -1,11 +1,9 @@
-import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import (
@@ -18,6 +16,7 @@ from .models import Article, Newsletter, Publisher, User
 
 
 def home(request):
+    """Home page showing the 20 most recent approved articles."""
     articles = (
         Article.objects.filter(approved=True)
         .select_related("author", "publisher")
@@ -27,6 +26,7 @@ def home(request):
 
 
 def register(request):
+    """User registration with automatic group assignment and login."""
     if request.method == "POST":
         form = UserRegisterForm(request.POST)
         if form.is_valid():
@@ -41,6 +41,7 @@ def register(request):
 
 
 def user_login(request):
+    """Login view using Django's AuthenticationForm."""
     if request.method == "POST":
         form = UserLoginForm(request, data=request.POST)
         if form.is_valid():
@@ -54,6 +55,7 @@ def user_login(request):
 
 
 def user_logout(request):
+    """Logout the current user and redirect to home."""
     logout(request)
     messages.info(request, "You have been logged out.")
     return redirect("home")
@@ -61,6 +63,7 @@ def user_logout(request):
 
 @login_required
 def reader_dashboard(request):
+    """Dashboard for readers — browse articles and manage subscriptions."""
     articles = (
         Article.objects.filter(approved=True)
         .select_related("author", "publisher")
@@ -77,7 +80,7 @@ def reader_dashboard(request):
                 approved=True,
                 author__in=request.user.subscribed_journalists.all(),
             )
-        ).distinct().order_by("-created_at")
+        ).distinct().select_related("author", "publisher").order_by("-created_at")
 
     publishers = Publisher.objects.all()
     journalists = User.objects.filter(role="journalist")
@@ -92,6 +95,7 @@ def reader_dashboard(request):
 
 @login_required
 def subscribe_publisher(request, publisher_id):
+    """Subscribe the current user to a publisher."""
     publisher = get_object_or_404(Publisher, id=publisher_id)
     request.user.subscribed_publishers.add(publisher)
     messages.success(request, f"Subscribed to {publisher.name}.")
@@ -100,6 +104,7 @@ def subscribe_publisher(request, publisher_id):
 
 @login_required
 def unsubscribe_publisher(request, publisher_id):
+    """Unsubscribe the current user from a publisher."""
     publisher = get_object_or_404(Publisher, id=publisher_id)
     request.user.subscribed_publishers.remove(publisher)
     messages.success(request, f"Unsubscribed from {publisher.name}.")
@@ -108,6 +113,7 @@ def unsubscribe_publisher(request, publisher_id):
 
 @login_required
 def subscribe_journalist(request, journalist_id):
+    """Subscribe the current user to a journalist."""
     journalist = get_object_or_404(User, id=journalist_id, role="journalist")
     request.user.subscribed_journalists.add(journalist)
     messages.success(request, f"Subscribed to {journalist.username}.")
@@ -116,6 +122,7 @@ def subscribe_journalist(request, journalist_id):
 
 @login_required
 def unsubscribe_journalist(request, journalist_id):
+    """Unsubscribe the current user from a journalist."""
     journalist = get_object_or_404(User, id=journalist_id, role="journalist")
     request.user.subscribed_journalists.remove(journalist)
     messages.success(request, f"Unsubscribed from {journalist.username}.")
@@ -124,12 +131,21 @@ def unsubscribe_journalist(request, journalist_id):
 
 @login_required
 def journalist_dashboard(request):
+    """Dashboard for journalists — manage own articles and newsletters."""
     if request.user.role != "journalist":
         messages.error(request, "Access denied.")
         return redirect("home")
 
-    articles = Article.objects.filter(author=request.user).order_by("-created_at")
-    newsletters = Newsletter.objects.filter(author=request.user).order_by("-created_at")
+    articles = (
+        Article.objects.filter(author=request.user)
+        .select_related("publisher")
+        .order_by("-created_at")
+    )
+    newsletters = (
+        Newsletter.objects.filter(author=request.user)
+        .prefetch_related("articles")
+        .order_by("-created_at")
+    )
 
     return render(request, "news/journalist_dashboard.html", {
         "articles": articles,
@@ -139,6 +155,7 @@ def journalist_dashboard(request):
 
 @login_required
 def article_create(request):
+    """Create a new article (journalists only)."""
     if request.user.role != "journalist":
         messages.error(request, "Only journalists can create articles.")
         return redirect("home")
@@ -158,6 +175,7 @@ def article_create(request):
 
 @login_required
 def article_edit(request, article_id):
+    """Edit an article — author journalists or any editor."""
     article = get_object_or_404(Article, id=article_id)
     if request.user.role not in ("journalist", "editor"):
         messages.error(request, "Access denied.")
@@ -179,6 +197,7 @@ def article_edit(request, article_id):
 
 @login_required
 def article_delete(request, article_id):
+    """Delete an article — author journalists or any editor."""
     article = get_object_or_404(Article, id=article_id)
     if request.user.role not in ("journalist", "editor"):
         messages.error(request, "Access denied.")
@@ -194,13 +213,26 @@ def article_delete(request, article_id):
 
 @login_required
 def editor_dashboard(request):
+    """Dashboard for editors — review pending articles and manage content."""
     if request.user.role != "editor":
         messages.error(request, "Access denied.")
         return redirect("home")
 
-    pending = Article.objects.filter(approved=False).order_by("-created_at")
-    approved = Article.objects.filter(approved=True).order_by("-created_at")
-    newsletters = Newsletter.objects.all().order_by("-created_at")
+    pending = (
+        Article.objects.filter(approved=False)
+        .select_related("author", "publisher")
+        .order_by("-created_at")
+    )
+    approved = (
+        Article.objects.filter(approved=True)
+        .select_related("author", "publisher")
+        .order_by("-created_at")
+    )
+    newsletters = (
+        Newsletter.objects.all()
+        .select_related("author")
+        .order_by("-created_at")
+    )
 
     return render(request, "news/editor_dashboard.html", {
         "pending": pending,
@@ -211,6 +243,7 @@ def editor_dashboard(request):
 
 @login_required
 def approve_article(request, article_id):
+    """Approve an article — the post_save signal handles notifications."""
     if request.user.role != "editor":
         messages.error(request, "Only editors can approve articles.")
         return redirect("home")
@@ -218,16 +251,13 @@ def approve_article(request, article_id):
     article = get_object_or_404(Article, id=article_id)
     article.approved = True
     article.save(update_fields=["approved"])
-
-    _notify_subscribers(article)
-    _post_to_api(article)
-
     messages.success(request, f'Article "{article.title}" approved.')
     return redirect("editor_dashboard")
 
 
 @login_required
 def reject_article(request, article_id):
+    """Reject and delete an unapproved article (editors only)."""
     if request.user.role != "editor":
         messages.error(request, "Only editors can reject articles.")
         return redirect("home")
@@ -241,6 +271,7 @@ def reject_article(request, article_id):
 
 @login_required
 def newsletter_create(request):
+    """Create a newsletter (journalists and editors)."""
     if request.user.role not in ("journalist", "editor"):
         messages.error(request, "Access denied.")
         return redirect("home")
@@ -261,6 +292,7 @@ def newsletter_create(request):
 
 @login_required
 def newsletter_edit(request, newsletter_id):
+    """Edit a newsletter (journalists and editors)."""
     newsletter = get_object_or_404(Newsletter, id=newsletter_id)
     if request.user.role not in ("journalist", "editor"):
         messages.error(request, "Access denied.")
@@ -279,6 +311,7 @@ def newsletter_edit(request, newsletter_id):
 
 @login_required
 def newsletter_delete(request, newsletter_id):
+    """Delete a newsletter (journalists and editors)."""
     newsletter = get_object_or_404(Newsletter, id=newsletter_id)
     if request.user.role not in ("journalist", "editor"):
         messages.error(request, "Access denied.")
@@ -290,6 +323,7 @@ def newsletter_delete(request, newsletter_id):
 
 
 def _assign_group(user, role):
+    """Assign a user to the appropriate Django group and set permissions."""
     group_name = role.capitalize()
     group, _ = Group.objects.get_or_create(name=group_name)
     user.groups.add(group)
@@ -297,62 +331,16 @@ def _assign_group(user, role):
 
 
 def _set_group_permissions(group, role):
+    """Set object-level Article permissions for the given group."""
     content_type = ContentType.objects.get_for_model(Article)
-    if role == "reader":
-        perms = Permission.objects.filter(
-            content_type=content_type,
-            codename__in=["view_article"],
-        )
-    elif role == "journalist":
-        perms = Permission.objects.filter(
-            content_type=content_type,
-            codename__in=["add_article", "change_article", "delete_article", "view_article"],
-        )
-    elif role == "editor":
-        perms = Permission.objects.filter(
-            content_type=content_type,
-            codename__in=["change_article", "delete_article", "view_article"],
-        )
-    else:
-        return
+    codename_map = {
+        "reader": ["view_article"],
+        "journalist": ["add_article", "change_article", "delete_article", "view_article"],
+        "editor": ["change_article", "delete_article", "view_article"],
+    }
+    codenames = codename_map.get(role, [])
+    perms = Permission.objects.filter(
+        content_type=content_type,
+        codename__in=codenames,
+    )
     group.permissions.set(perms)
-
-
-def _notify_subscribers(article):
-    subscribers = set()
-    for user in article.publisher.subscribers.filter(role="reader"):
-        if user.email:
-            subscribers.add(user.email)
-    for user in article.author.followers.filter(role="reader"):
-        if user.email:
-            subscribers.add(user.email)
-
-    if subscribers:
-        try:
-            send_mail(
-                subject=f"New Article: {article.title}",
-                message=f"{article.title}\n\n{article.content[:500]}\n\nRead more on our site.",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=list(subscribers),
-                fail_silently=True,
-            )
-        except Exception:
-            pass
-
-
-def _post_to_api(article):
-    base_url = getattr(settings, "SITE_BASE_URL", "http://localhost:8000")
-    try:
-        requests.post(
-            f"{base_url}/api/approved/",
-            json={
-                "id": article.id,
-                "title": article.title,
-                "publisher": article.publisher_id,
-                "author": article.author_id,
-                "approved_at": str(article.created_at),
-            },
-            timeout=5,
-        )
-    except Exception:
-        pass

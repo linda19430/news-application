@@ -10,6 +10,8 @@ User = get_user_model()
 
 
 class RegistrationTest(TestCase):
+    """Tests for user registration with roles and duplicate email validation."""
+
     def test_register_creates_user_with_role(self):
         response = self.client.post("/register/", {
             "username": "newuser",
@@ -49,7 +51,10 @@ class RegistrationTest(TestCase):
 
     def test_register_duplicate_email_fails(self):
         User.objects.create_user(
-            username="existing", email="dup@test.com", password="pass", role="reader",
+            username="existing",
+            email="dup@test.com",
+            password="pass",
+            role="reader",
         )
         response = self.client.post("/register/", {
             "username": "newuser",
@@ -63,6 +68,8 @@ class RegistrationTest(TestCase):
 
 
 class ArticleAPITest(TestCase):
+    """Tests for article API endpoints and role-based access control."""
+
     def setUp(self):
         self.client = APIClient()
 
@@ -122,13 +129,17 @@ class ArticleAPITest(TestCase):
 
     def test_get_single_article(self):
         self.client.login(username="reader1", password="readerpass")
-        response = self.client.get(f"/api/articles/{self.article1.id}/")
+        response = self.client.get(
+            f"/api/articles/{self.article1.id}/"
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["title"], "Approved Article")
 
     def test_get_unapproved_article_returns_404(self):
         self.client.login(username="reader1", password="readerpass")
-        response = self.client.get(f"/api/articles/{self.article3.id}/")
+        response = self.client.get(
+            f"/api/articles/{self.article3.id}/"
+        )
         self.assertEqual(response.status_code, 404)
 
     def test_unauthenticated_api_returns_403(self):
@@ -143,51 +154,67 @@ class ArticleAPITest(TestCase):
             "publisher": self.publisher.id,
         })
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(Article.objects.filter(title="New Article").count(), 1)
+        self.assertEqual(
+            Article.objects.filter(title="New Article").count(), 1
+        )
 
     def test_reader_cannot_create_article(self):
         self.client.login(username="reader1", password="readerpass")
         response = self.client.post("/api/articles/", {
-            "title": "Should Fail", "content": "x", "publisher": self.publisher.id,
+            "title": "Should Fail",
+            "content": "x",
+            "publisher": self.publisher.id,
         })
         self.assertEqual(response.status_code, 403)
 
     def test_journalist_can_edit_own_article(self):
         self.client.login(username="journalist1", password="journopass")
-        response = self.client.put(f"/api/articles/{self.article1.id}/", {
-            "title": "Updated Title",
-        })
+        response = self.client.put(
+            f"/api/articles/{self.article1.id}/",
+            {"title": "Updated Title"},
+        )
         self.assertEqual(response.status_code, 200)
         self.article1.refresh_from_db()
         self.assertEqual(self.article1.title, "Updated Title")
 
     def test_journalist_cannot_edit_others_article(self):
         self.client.login(username="journalist1", password="journopass")
-        response = self.client.put(f"/api/articles/{self.article2.id}/", {
-            "title": "Hacked",
-        })
+        response = self.client.put(
+            f"/api/articles/{self.article2.id}/",
+            {"title": "Hacked"},
+        )
         self.assertEqual(response.status_code, 403)
 
     def test_editor_can_delete_article(self):
         self.client.login(username="editor1", password="editorpass")
-        response = self.client.delete(f"/api/articles/{self.article1.id}/")
+        response = self.client.delete(
+            f"/api/articles/{self.article1.id}/"
+        )
         self.assertEqual(response.status_code, 204)
-        self.assertFalse(Article.objects.filter(id=self.article1.id).exists())
+        self.assertFalse(
+            Article.objects.filter(id=self.article1.id).exists()
+        )
 
     def test_reader_cannot_delete_article(self):
         self.client.login(username="reader1", password="readerpass")
-        response = self.client.delete(f"/api/articles/{self.article1.id}/")
+        response = self.client.delete(
+            f"/api/articles/{self.article1.id}/"
+        )
         self.assertEqual(response.status_code, 403)
 
     def test_editor_cannot_create_article(self):
         self.client.login(username="editor1", password="editorpass")
         response = self.client.post("/api/articles/", {
-            "title": "Should Fail", "content": "x", "publisher": self.publisher.id,
+            "title": "Should Fail",
+            "content": "x",
+            "publisher": self.publisher.id,
         })
         self.assertEqual(response.status_code, 403)
 
 
 class NewsletterAPITest(TestCase):
+    """Tests for newsletter API endpoints and role-based access control."""
+
     def setUp(self):
         self.client = APIClient()
         self.reader = User.objects.create_user(
@@ -213,7 +240,9 @@ class NewsletterAPITest(TestCase):
             "articles": [self.article.id],
         })
         self.assertEqual(response.status_code, 201)
-        self.assertTrue(Newsletter.objects.filter(title="Weekly Digest").exists())
+        self.assertTrue(
+            Newsletter.objects.filter(title="Weekly Digest").exists()
+        )
 
     def test_reader_cannot_create_newsletter(self):
         self.client.login(username="reader1", password="readerpass")
@@ -232,7 +261,9 @@ class NewsletterAPITest(TestCase):
             title="Delete Me", description="x", author=self.journalist,
         )
         self.client.login(username="editor1", password="editorpass")
-        response = self.client.delete(f"/api/newsletters/{newsletter.id}/")
+        response = self.client.delete(
+            f"/api/newsletters/{newsletter.id}/"
+        )
         self.assertEqual(response.status_code, 204)
 
     def test_reader_cannot_delete_newsletter(self):
@@ -240,11 +271,16 @@ class NewsletterAPITest(TestCase):
             title="Safe", description="x", author=self.journalist,
         )
         self.client.login(username="reader1", password="readerpass")
-        response = self.client.delete(f"/api/newsletters/{newsletter.id}/")
+        response = self.client.delete(
+            f"/api/newsletters/{newsletter.id}/"
+        )
         self.assertEqual(response.status_code, 403)
 
 
 class ArticleApprovalTest(TestCase):
+    """Tests for article approval/rejection workflow and signal-triggered
+    notifications."""
+
     def setUp(self):
         self.client = APIClient()
         self.editor = User.objects.create_user(
@@ -254,7 +290,9 @@ class ArticleApprovalTest(TestCase):
             username="journalist1", password="journopass", role="journalist",
         )
         self.reader = User.objects.create_user(
-            username="reader1", password="readerpass", role="reader",
+            username="reader1",
+            password="readerpass",
+            role="reader",
             email="reader@test.com",
         )
         self.publisher = Publisher.objects.create(name="Daily Tech")
@@ -281,22 +319,26 @@ class ArticleApprovalTest(TestCase):
     def test_reject_article_deletes_it(self):
         self.client.login(username="editor1", password="editorpass")
         self.client.get(f"/editor/reject/{self.article.id}/")
-        self.assertFalse(Article.objects.filter(id=self.article.id).exists())
+        self.assertFalse(
+            Article.objects.filter(id=self.article.id).exists()
+        )
 
     def test_cannot_reject_approved_article(self):
         self.article.approved = True
         self.article.save()
         self.client.login(username="editor1", password="editorpass")
-        response = self.client.get(f"/editor/reject/{self.article.id}/")
+        response = self.client.get(
+            f"/editor/reject/{self.article.id}/"
+        )
         self.assertEqual(response.status_code, 404)
 
-    @patch("news.views.send_mail")
+    @patch("news.signals.send_mail")
     def test_approval_triggers_email(self, mock_send):
         self.client.login(username="editor1", password="editorpass")
         self.client.get(f"/editor/approve/{self.article.id}/")
         self.assertTrue(mock_send.called)
 
-    @patch("news.views.requests.post")
+    @patch("news.signals.requests.post")
     def test_approval_posts_to_api(self, mock_post):
         self.client.login(username="editor1", password="editorpass")
         self.client.get(f"/editor/approve/{self.article.id}/")
@@ -304,9 +346,14 @@ class ArticleApprovalTest(TestCase):
 
 
 class SignalTest(TestCase):
+    """Tests for the post_save signal that handles article approval
+    notifications."""
+
     def setUp(self):
         self.reader = User.objects.create_user(
-            username="reader1", password="readerpass", role="reader",
+            username="reader1",
+            password="readerpass",
+            role="reader",
             email="reader@test.com",
         )
         self.journalist = User.objects.create_user(
@@ -346,6 +393,8 @@ class SignalTest(TestCase):
 
 
 class SubscriptionTest(TestCase):
+    """Tests for reader subscription management."""
+
     def setUp(self):
         self.client = APIClient()
         self.reader = User.objects.create_user(
@@ -358,22 +407,36 @@ class SubscriptionTest(TestCase):
 
     def test_reader_can_subscribe_to_publisher(self):
         self.client.login(username="reader1", password="readerpass")
-        self.client.get(f"/reader/subscribe/publisher/{self.publisher.id}/")
-        self.assertIn(self.publisher, self.reader.subscribed_publishers.all())
+        self.client.get(
+            f"/reader/subscribe/publisher/{self.publisher.id}/"
+        )
+        self.assertIn(
+            self.publisher, self.reader.subscribed_publishers.all()
+        )
 
     def test_reader_can_subscribe_to_journalist(self):
         self.client.login(username="reader1", password="readerpass")
-        self.client.get(f"/reader/subscribe/journalist/{self.journalist.id}/")
-        self.assertIn(self.journalist, self.reader.subscribed_journalists.all())
+        self.client.get(
+            f"/reader/subscribe/journalist/{self.journalist.id}/"
+        )
+        self.assertIn(
+            self.journalist, self.reader.subscribed_journalists.all()
+        )
 
     def test_reader_can_unsubscribe_from_publisher(self):
         self.reader.subscribed_publishers.add(self.publisher)
         self.client.login(username="reader1", password="readerpass")
-        self.client.get(f"/reader/unsubscribe/publisher/{self.publisher.id}/")
-        self.assertNotIn(self.publisher, self.reader.subscribed_publishers.all())
+        self.client.get(
+            f"/reader/unsubscribe/publisher/{self.publisher.id}/"
+        )
+        self.assertNotIn(
+            self.publisher, self.reader.subscribed_publishers.all()
+        )
 
 
 class ApprovedAPITest(TestCase):
+    """Tests for the internal approved-article logging endpoint."""
+
     def setUp(self):
         self.client = APIClient()
         self.journalist = User.objects.create_user(
